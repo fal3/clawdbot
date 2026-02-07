@@ -30,40 +30,42 @@ if [ ! -d "$APP_BUNDLE" ]; then
 fi
 
 select_identity() {
-  local preferred available first
+  local hash
 
   # Prefer a Developer ID Application cert.
-  preferred="$(security find-identity -p codesigning -v 2>/dev/null \
-    | awk -F'\"' '/Developer ID Application/ { print $2; exit }')"
-
-  if [ -n "$preferred" ]; then
-    echo "$preferred"
+  # Extract the hash (unique identifier) to avoid ambiguity when multiple certs have the same name.
+  # Format: "  1) ABC123... "Apple Development: Name (TEAMID)""
+  hash="$(security find-identity -p codesigning -v 2>/dev/null \
+    | awk '/Developer ID Application/ { gsub(/^[^)]*\)[[:space:]]+/, ""); gsub(/[[:space:]]+".*$/, ""); print; exit }')"
+  if [ -n "$hash" ]; then
+    echo "$hash"
     return
   fi
 
   # Next, try Apple Distribution.
-  preferred="$(security find-identity -p codesigning -v 2>/dev/null \
-    | awk -F'\"' '/Apple Distribution/ { print $2; exit }')"
-  if [ -n "$preferred" ]; then
-    echo "$preferred"
+  hash="$(security find-identity -p codesigning -v 2>/dev/null \
+    | awk '/Apple Distribution/ { gsub(/^[^)]*\)[[:space:]]+/, ""); gsub(/[[:space:]]+".*$/, ""); print; exit }')"
+  if [ -n "$hash" ]; then
+    echo "$hash"
     return
   fi
 
   # Then, try Apple Development.
-  preferred="$(security find-identity -p codesigning -v 2>/dev/null \
-    | awk -F'\"' '/Apple Development/ { print $2; exit }')"
-  if [ -n "$preferred" ]; then
-    echo "$preferred"
+  # Extract the hash (unique identifier) instead of the name to avoid ambiguity
+  # when multiple certificates have the same name.
+  hash="$(security find-identity -p codesigning -v 2>/dev/null \
+    | awk '/Apple Development/ { gsub(/^[^)]*\)[[:space:]]+/, ""); gsub(/[[:space:]]+".*$/, ""); print; exit }')"
+  if [ -n "$hash" ]; then
+    echo "$hash"
     return
   fi
 
-  # Fallback to the first valid signing identity.
-  available="$(security find-identity -p codesigning -v 2>/dev/null \
-    | sed -n 's/.*\"\\(.*\\)\"/\\1/p')"
+  # Fallback to the first valid signing identity hash.
+  hash="$(security find-identity -p codesigning -v 2>/dev/null \
+    | awk '/valid identities found/ { next } /^[[:space:]]*[0-9]+\)/ { gsub(/^[^)]*\)[[:space:]]+/, ""); gsub(/[[:space:]]+".*$/, ""); print; exit }')"
 
-  if [ -n "$available" ]; then
-    first="$(printf '%s\n' "$available" | head -n1)"
-    echo "$first"
+  if [ -n "$hash" ]; then
+    echo "$hash"
     return
   fi
 

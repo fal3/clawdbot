@@ -176,9 +176,8 @@ if [ "$NO_SIGN" -eq 1 ]; then
   mkdir -p "${HOME}/.openclaw"
   run_step "disable launchagent writes" /usr/bin/touch "${LAUNCHAGENT_DISABLE_MARKER}"
 elif [ "$SIGN" -eq 1 ]; then
-  if ! check_signing_keys; then
-    fail "No signing identity found. Use --no-sign or install a signing key."
-  fi
+  # Let codesign-mac-app.sh select the identity automatically
+  export DISABLE_LIBRARY_VALIDATION=1
   unset ALLOW_ADHOC_SIGNING
   unset SIGN_IDENTITY
 fi
